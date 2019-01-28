@@ -11,7 +11,14 @@ import UIKit
 class DrawView: UIView {
     var currentLines = [NSValue: Line]()
     var finishedLines = [Line]()
-    var selectedLineIndex: Int?
+    var selectedLineIndex: Int? {
+        didSet {
+            if selectedLineIndex == nil {
+                let menu = UIMenuController.shared
+                menu.setMenuVisible(false, animated: true)
+            }
+        }
+    }
     
     @IBInspectable var finishedLineColor: UIColor = UIColor.black {
         didSet {
@@ -50,6 +57,25 @@ class DrawView: UIView {
     @objc func tap(_ gestureRecognizer: UIGestureRecognizer) {
         let point = gestureRecognizer.location(in: self)
         selectedLineIndex = indexOfLine(at: point)
+        
+        let menu = UIMenuController.shared
+        
+        if selectedLineIndex != nil {
+            /* Make DrawView the target of menu action messages */
+            becomeFirstResponder()
+            
+            let deleteItem = UIMenuItem(title: "delete", action: #selector(DrawView.deleteLine(_:)))
+            menu.menuItems = [deleteItem]
+            
+            /* Tell the menu item where it should show */
+            let targetRect = CGRect(x: point.x, y: point.y, width: 2, height: 2)
+            menu.setTargetRect(targetRect, in: self)
+            menu.setMenuVisible(true, animated: true)
+        }
+        else {
+            menu.setMenuVisible(false, animated: true)
+        }
+        
         setNeedsDisplay()
     }
     
@@ -59,6 +85,14 @@ class DrawView: UIView {
         finishedLines.removeAll()
         
         setNeedsDisplay()
+    }
+    
+    @objc func deleteLine(_ sender: UIMenuController) {
+        if let index = selectedLineIndex {
+            finishedLines.remove(at: index)
+            selectedLineIndex = nil
+            setNeedsDisplay()
+        }
     }
     
     func stroke(_ line: Line) {
@@ -148,5 +182,9 @@ class DrawView: UIView {
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         currentLines.removeAll()
         setNeedsDisplay()
+    }
+    
+    override var canBecomeFirstResponder: Bool {
+        return true
     }
 }
