@@ -20,6 +20,7 @@ class DrawView: UIView, UIGestureRecognizerDelegate {
         }
     }
     var moveRecognizer: UIPanGestureRecognizer!
+    var longPressRecognizer: UILongPressGestureRecognizer!
     
     @IBInspectable var finishedLineColor: UIColor = UIColor.black {
         didSet {
@@ -57,7 +58,7 @@ class DrawView: UIView, UIGestureRecognizerDelegate {
         addGestureRecognizer(tapRecognizer)
         
         /* Add long press UIGestureRecognizer */
-        let longPressRecognizer = UILongPressGestureRecognizer(target: self,
+        longPressRecognizer = UILongPressGestureRecognizer(target: self,
                                                          action: #selector(DrawView.longPress(_:)))
         addGestureRecognizer(longPressRecognizer)
         
@@ -120,6 +121,10 @@ class DrawView: UIView, UIGestureRecognizerDelegate {
     }
     
     @objc func moveLine(_ gestureRecognizer: UIPanGestureRecognizer) {
+        
+        guard longPressRecognizer.state == .changed else {
+            return;
+        }
         
         /* If a line is selected */
         if let index = selectedLineIndex {
