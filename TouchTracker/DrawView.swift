@@ -8,7 +8,7 @@
 
 import UIKit
 
-class DrawView: UIView {
+class DrawView: UIView, UIGestureRecognizerDelegate {
     var currentLines = [NSValue: Line]()
     var finishedLines = [Line]()
     var selectedLineIndex: Int? {
@@ -19,6 +19,7 @@ class DrawView: UIView {
             }
         }
     }
+    var moveRecognizer: UIPanGestureRecognizer!
     
     @IBInspectable var finishedLineColor: UIColor = UIColor.black {
         didSet {
@@ -41,17 +42,33 @@ class DrawView: UIView {
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         
+        /* Add double tap UIGestureRecognizer */
         let doubleTapRecognizer = UITapGestureRecognizer(target: self,
                                                          action: #selector(DrawView.doubleTap(_:)))
         doubleTapRecognizer.delaysTouchesBegan = true
         doubleTapRecognizer.numberOfTapsRequired = 2
         addGestureRecognizer(doubleTapRecognizer)
         
+        /* Add single tap UIGestureRecognizer */
         let tapRecognizer = UITapGestureRecognizer(target: self,
                                                    action: #selector(DrawView.tap(_:)))
         tapRecognizer.delaysTouchesBegan = true
         tapRecognizer.require(toFail: doubleTapRecognizer)
         addGestureRecognizer(tapRecognizer)
+        
+        /* Add long press UIGestureRecognizer */
+        let longPressRecognizer = UILongPressGestureRecognizer(target: self,
+                                                         action: #selector(DrawView.longPress(_:)))
+        addGestureRecognizer(longPressRecognizer)
+        
+        
+        /* Set UIPanRecognizer */
+        moveRecognizer = UIPanGestureRecognizer(target: self,
+                                                action: #selector(DrawView.moveLine(_:)))
+        moveRecognizer.cancelsTouchesInView = false
+        moveRecognizer.delegate = self
+        addGestureRecognizer(moveRecognizer)
+        
     }
     
     @objc func tap(_ gestureRecognizer: UIGestureRecognizer) {
@@ -85,6 +102,53 @@ class DrawView: UIView {
         finishedLines.removeAll()
         
         setNeedsDisplay()
+    }
+    
+    @objc func longPress(_ gestureRecognizer: UIGestureRecognizer) {
+        if gestureRecognizer.state == .began {
+            let point = gestureRecognizer.location(in: self)
+            selectedLineIndex = indexOfLine(at: point)
+            
+            if selectedLineIndex != nil {
+                currentLines.removeAll()
+            }
+        } else if gestureRecognizer.state == .ended {
+            selectedLineIndex = nil
+        }
+        
+        setNeedsDisplay()
+    }
+    
+    @objc func moveLine(_ gestureRecognizer: UIPanGestureRecognizer) {
+        
+        /* If a line is selected */
+        if let index = selectedLineIndex {
+            
+            /* When the pan recognizer changes its position */
+            if gestureRecognizer.state == .changed {
+                
+                /* Grab how far the pan shifted from its origin position */
+                let translation = gestureRecognizer.translation(in: self)
+                
+                /* Add the translation to the current beginning and end points of the line */
+                finishedLines[index].begin.x += translation.x
+                finishedLines[index].begin.y += translation.y
+                finishedLines[index].end.x += translation.x
+                finishedLines[index].end.y += translation.y
+                
+                /* Reset gestureRecognizer CGPoint back to zero once a changed has been reported */
+                gestureRecognizer.setTranslation(CGPoint.zero, in: self)
+                
+                setNeedsDisplay()
+            }
+        } else {
+            /* If no line selected */
+            return
+        }
+    }
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
     
     @objc func deleteLine(_ sender: UIMenuController) {
